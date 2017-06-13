@@ -1,0 +1,4 @@
+[Project]
+Name=g2o_trajOpt
+Manager=KDevCMakeManager
+VersionControl=kdevgit

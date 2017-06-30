@@ -21,3 +21,4 @@ Written in kdevelop (https://www.kdevelop.org/) --Based on cmake.<br>
 # Data
 From SHEN University -》 Spatial Lab.<br>
 
+# g2o_trajOpt

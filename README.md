@@ -11,14 +11,14 @@ eg. <br>
 >>lmIndex refers to these consensus location's refernce in each single trajectory.)<br>
      
 # Dependency
-g2o<br>
-cholmod<br>
-eigen<br>
+>>g2o<br>
+>>cholmod<br>
+>>eigen<br>
   
 # Compilation
-Written in kdevelop (https://www.kdevelop.org/) --Based on cmake.<br>
+Written in kdevelop (https://www.kdevelop.org/)<br>
+Based on cmake.<br>
   
 # Data
-From SHEN University -》 Spatial Lab.<br>
+From Shenzhen University -》 Spatial Lab.<br>
 
-# g2o_trajOpt

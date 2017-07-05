@@ -17,6 +17,11 @@ include_directories(${G2O_INCLUDE_DIR})
 find_package(Cholmod REQUIRED)
 include_directories(${CHOLMOD_INCLUDE_DIR})
 
+# eigen
+find_package(Eigen3 REQUIRED)
+include_directories(${EIGEN3_INCLUDE_DIR})
+include_directories("/usr/local/include/eigen3")
+
 #find_package(OpenGL)
 #find_package(GLUT)
 

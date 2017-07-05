@@ -14,6 +14,7 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include "g2o/types/slam2d/vertex_point_xy.h"
+#include "g2o/types/slam2d/vertex_se2.h"
 #include "g2o/types/slam2d/edge_pointxy.h"
 #include "g2o/core/sparse_optimizer.h"
 #include "g2o/core/block_solver.h"
@@ -182,6 +183,8 @@ int main(int argc, char **argv) {
 	else gap_ptr++;
     }
     
+    ////////////////////////////////////
+    /// Virtual Camera Optimization. ///
     vector<vector<int>>::iterator globe_iter = globeIndexList.begin() - 1;
     while(globe_iter++ != globeIndexList.end()){
 

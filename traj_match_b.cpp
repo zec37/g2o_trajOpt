@@ -33,7 +33,7 @@ const int tr_num = 80;
 const int loops_each_traj = 6;
 
 int main(int argc, char **argv) {
-  
+
 
     /////////////////////////////////////
     /// Load all trajectories data. ///
@@ -75,10 +75,10 @@ int main(int argc, char **argv) {
     string message;
     ifstream loop_file("../data/loops.txt");
 
-      // Stored data. //
+    // Stored data. //
     vector<int> loopIndex;      // Store loop points.
     vector<vector<int>> globeIndexList;   // Store loop points' corresponding global ID in each trajectory.
-      // Temp data. //
+    // Temp data. //
     vector<string> temp, lmGTID, lmIndex;   // temp loop points & global ID container.
     int loop_check[loops_each_traj];	// to find the reference of loop points in loopIndex.
     int tr_n = 0;	// to check current reading trajactory.
@@ -95,36 +95,36 @@ int main(int argc, char **argv) {
         // Construct loop point list. //
         for(int i = 0; i < loops_each_traj; i++){
 
-	    int int_ID = atoi(lmGTID[i].c_str());
-	    
-	    // When starting, the loopIndex is blank. //
-	    if(loopIndex.empty()){		
-	      loopIndex.push_back(int_ID);
-              vector<int> temp_vec;	// Need to initialize global index as well.
-              globeIndexList.push_back(temp_vec);
-	    }
-	    // Assign new index if found. //
-	    else{
-	      vector<int>::iterator iter = find(
-		loopIndex.begin(), loopIndex.end(), int_ID);
-	      if(iter == loopIndex.end()){
-		  loopIndex.push_back(int_ID);
-		  vector<int> temp_vec;	// Need to initialize global index as well.
-		  globeIndexList.push_back(temp_vec);
-	      }
-	    }
+            int int_ID = atoi(lmGTID[i].c_str());
+
+            // When starting, the loopIndex is blank. //
+            if(loopIndex.empty()){		
+                loopIndex.push_back(int_ID);
+                vector<int> temp_vec;	// Need to initialize global index as well.
+                globeIndexList.push_back(temp_vec);
+            }
+            // Assign new index if found. //
+            else{
+                vector<int>::iterator iter = find(
+                    loopIndex.begin(), loopIndex.end(), int_ID);
+                if(iter == loopIndex.end()){
+                    loopIndex.push_back(int_ID);
+                    vector<int> temp_vec;	// Need to initialize global index as well.
+                    globeIndexList.push_back(temp_vec);
+                }
+            }
             loop_check[i] = int_ID;
         }
         //copy(loopIndex.begin(), loopIndex.end(), ostream_iterator<int>(cout, "\n"));	//for debugging.
 
         // Assign global ID to the corresponding loop point. //
         for(int i = 0; i < loops_each_traj; i++){
-            
-	    int loop_ref = 0;
-	    while(loopIndex[loop_ref] != loop_check[i]) loop_ref++;
-	    int int_ID =  atoi(lmIndex[i].c_str());
+
+            int loop_ref = 0;
+            while(loopIndex[loop_ref] != loop_check[i]) loop_ref++;
+            int int_ID =  atoi(lmIndex[i].c_str());
             int globeID = (*(pose_sum + tr_n)) - (*(traj_size + tr_n)) + int_ID - 1;
-	    globeIndexList[loop_ref].push_back(globeID);
+            globeIndexList[loop_ref].push_back(globeID);
 
             vector<int>::iterator end = globeIndexList[loop_ref].end();
             cerr << "The " << i + 1 << "th loop point for lmGTID for traj " << tr_n + 1 << " is " << loopIndex[loop_ref]  << endl;
@@ -170,50 +170,94 @@ int main(int argc, char **argv) {
 
     for(int i = 0; i < poses.size(); i++){
         if(i != (*gap_ptr) - 1){
-	  g2o::EdgePointXY *edge = new g2o::EdgePointXY();
-	  edge->vertices()[0] = optimizer.vertex(i);
-	  edge->vertices()[1] = optimizer.vertex(i + 1);
-	  edge->setMeasurement(poses[i + 1] - poses[i]);
-	  edge->setInformation(eye2d);
-	  optimizer.addEdge(edge);
-	  edge_total++;
-	}
-	else gap_ptr++;
+            g2o::EdgePointXY *edge = new g2o::EdgePointXY();
+            edge->vertices()[0] = optimizer.vertex(i);
+            edge->vertices()[1] = optimizer.vertex(i + 1);
+            edge->setMeasurement(poses[i + 1] - poses[i]);
+            edge->setInformation(eye2d);
+            optimizer.addEdge(edge);
+            edge_total++;
+        }
+        else gap_ptr++;
     }
-    
-    
+
+
     ////////////////////////////////////////////////////////////
     /// Add layer constraints for loop closure optimization. ///
-        // Check Input. //
+    // Check Input. //
     int loopList_size = loopIndex.size();
     for(int i = 0; i < loopList_size; i++){      
-      cout << "loop point" << i+1 << " is " << loopIndex[i] << endl;
-      cout << "Global IDs are ";
-      vector<int>::iterator iter;
-      for(iter = globeIndexList[i].begin(); iter != globeIndexList[i].end(); iter++){	
-	cout << *iter << " ";
-      }
-      cout << endl;
+        cout << "loop point" << i+1 << " is " << loopIndex[i] << endl;
+        cout << "Global IDs are ";
+        vector<int>::iterator iter;
+        for(iter = globeIndexList[i].begin(); iter != globeIndexList[i].end(); iter++){	
+            cout << *iter << " ";
+        }
+        cout << endl;
     }
-        // Add edge. //
-   vector<vector<int>>::iterator globe_iter = globeIndexList.begin() - 1;
-   while(globe_iter++ != globeIndexList.end()){
+    // Add edge. //
+    vector<vector<int>>::iterator globe_iter = globeIndexList.begin() - 1;
+    while(globe_iter++ != globeIndexList.end()){
 
-       int list_size = (*globe_iter).size();
-       for(int i = 0; i < list_size - 1; i++){
-           for(int j = i + 1; j < list_size; j++){
+        int list_size = (*globe_iter).size();
+        for(int i = 0; i < list_size - 1; i++){
+            for(int j = i + 1; j < list_size; j++){
 
-               g2o::EdgePointXY *edge = new g2o::EdgePointXY();
-               edge->vertices()[0] = optimizer.vertex((*globe_iter)[i]);
-               edge->vertices()[1] = optimizer.vertex((*globe_iter)[j]);
-               edge->setMeasurement(Vector2d(0, 0));
-               edge->setInformation(eye2d);
-               optimizer.addEdge(edge);
-               edge_total++;
-           }
-       }
-   }
+                g2o::EdgePointXY *edge = new g2o::EdgePointXY();
+                edge->vertices()[0] = optimizer.vertex((*globe_iter)[i]);
+                edge->vertices()[1] = optimizer.vertex((*globe_iter)[j]);
+                edge->setMeasurement(Vector2d(0, 0));
+                edge->setInformation(eye2d);
+                optimizer.addEdge(edge);
+                edge_total++;
+            }
+        }
+    }
 
+    
+    /////////////////////////////////////////////////////////////
+    /// Partial optimize every 10 traj to eliminate drifting. ///
+    for(int i = 0; i < (int)(tr_num / 10); i++){
+        for(int j = 0; j < 10; j++){
+
+            if(j != 9)
+            {     // For every two near trajs' sizes, calculate the smaller.
+             int less_size = min( (*(traj_size + 10 * i + j)), (*(traj_size + 10 * i + j + 1)) );
+             int start_a = (*(pose_sum + i * 10 + j)) - (*(traj_size + i * 10 + j));
+             int start_b = (*(pose_sum + i * 10 + j + 1)) - (*(traj_size + i * 10 + j + 1));
+
+             // Add constraints along the trajs for every 2 near point.
+             for(int k = 0; k < less_size; k++){
+
+                 g2o::EdgePointXY *edge = new g2o::EdgePointXY;
+                 edge->vertices()[0] = optimizer.vertex(start_a + k);
+                 edge->vertices()[1] = optimizer.vertex(start_b + k);
+                 edge->setMeasurement(Vector2d(0, 0));
+                 edge->setInformation(eye2d);
+                 optimizer.addEdge(edge);
+                 edge_total++;
+             }
+            }
+            else
+            {       // The 10th traj take in 1st traj as its near next traj.
+             int less_size = min( (*(traj_size + 10 * i + 9)), (*traj_size + 10 * i) );
+             int start_a = (*(pose_sum + i * 10 + 9)) - (*(traj_size + i * 10 + 9));
+             int start_b = (*(pose_sum + i * 10)) - (*(traj_size + i * 10));
+
+             // Add constraints along the trajs for every 2 near point.
+             for(int k = 0; k < less_size; k++){
+
+                 g2o::EdgePointXY *edge = new g2o::EdgePointXY;
+                 edge->vertices()[0] = optimizer.vertex(start_a + k);
+                 edge->vertices()[1] = optimizer.vertex(start_b + k);
+                 edge->setMeasurement(Vector2d(0, 0));
+                 edge->setInformation(eye2d);
+                 optimizer.addEdge(edge);
+                 edge_total++;
+             }
+            }
+        }
+    }
 
     /////////////////////
     /// Optimization. ///

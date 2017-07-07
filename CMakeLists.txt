@@ -18,17 +18,17 @@ find_package(Cholmod REQUIRED)
 include_directories(${CHOLMOD_INCLUDE_DIR})
 
 # eigen
-find_package(Eigen3 REQUIRED)
-include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories("/usr/local/include/eigen3")
+include_directories("/usr/local/include/eigen3/Eigen")
 
 #find_package(OpenGL)
 #find_package(GLUT)
 
-add_executable( g2o_trajopt traj_match_b.cpp)
+add_executable( g2o_trajopt traj_match_c.cpp)
 target_link_libraries( ${PROJECT_NAME} 
     g2o_core g2o_stuff g2o_types_slam2d
     ${CHOLMOD_LIBRARIES}
+    ${EIGEN_LIBRARIES}
     #${GLUT_LIBRARIES}
 )
 

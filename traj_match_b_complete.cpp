@@ -14,7 +14,6 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include "g2o/types/slam2d/vertex_point_xy.h"
-#include "g2o/types/slam2d/vertex_se2.h"
 #include "g2o/types/slam2d/edge_pointxy.h"
 #include "g2o/core/sparse_optimizer.h"
 #include "g2o/core/block_solver.h"
@@ -23,62 +22,14 @@
 #include "g2o/core/optimization_algorithm_levenberg.h"
 #include "g2o/solvers/cholmod/linear_solver_cholmod.h"
 #include "g2o/solvers/eigen/linear_solver_eigen.h"
-#include "g2o/types/slam2d/edge_se2_pointxy_offset.h"
 
 using namespace std;
 using namespace Eigen;
 
 
-/////////////////////////////////////////////////////////////////////////
-/// The function to calculate tranform matrix between two trajactory. ///
-Matrix3d calculate_transform(Vector2d v1n, Vector2d v2n, Vector2d v1o, Vector2d v2o){
-    
-    Vector2d _v1n = v1n;
-    Vector2d _v2n = v2n;
-    Vector2d _v1o = v1o;
-    Vector2d _v2o = v2o;
-
-    double _cos, _sin, _tx, _ty;
-    Matrix3d _coeff;
-    Vector3d _result;
-    Vector3d _solver;
-
-    // v1 means the first cross point. v2 means the second cross point.
-    // (0) means vector.x  ||  (1) means vector.y
-    // n refers to new, means the new traj that need to be tranformed.
-    // o refers to old, means the old traj that should be tranformed to.
-    _coeff <<   _v1n(0) * _v1n(0) + _v1n(1) * _v1n(1),      _v1n(0),     _v1n(1),
-                _v2n(0) * _v2n(0) + _v2n(1) * _v2n(1),      _v2n(0),     _v2n(1),
-                _v1n(0) * _v2n(0) + _v1n(1) * _v2n(1),      _v1n(0),     _v2n(1);
-
-    _result <<  _v1n(0) * _v1o(0) + _v1n(1) * _v1o(1),
-                _v2n(0) * _v2o(0) + _v2n(1) * _v2o(1),
-                _v1n(0) * _v2o(0) + _v1o(1) * _v2n(1);
-
-    _solver = _coeff.colPivHouseholderQr().solve(_result);
-
-    _cos = _solver(0);
-    _tx = _solver(1);
-    _ty = _solver(2);
-
-    _sin = ( -_v1o(0) + _v1n(0) * _cos + _tx) / _v1n(1);
-
-    cerr << "cos= " << _cos << endl;
-    cerr << "tx= " << _tx << endl;
-    cerr << "ty= " << _ty << endl;
-
-    Matrix3d _tranform;
-    _tranform << _cos, -_sin, 	_tx,
-                 _sin, 	_cos, 	_ty,
-		    0, 	   0,	  1;
-
-    return _tranform;
-}
-
-
 /////////////////////////
 /// Pre_define param. ///
-const int tr_num = 8;
+const int tr_num = 80;
 const int loops_each_traj = 6;
 
 int main(int argc, char **argv) {
@@ -96,7 +47,7 @@ int main(int argc, char **argv) {
 
         stringstream intostr;
         string traj_name, traj_index;
-        intostr << (i * 10 + 1);    // Need to fix for different read.
+        intostr << (i + 1);
         intostr >> traj_index;
         traj_name = "../data/traj" + traj_index + ".txt";
         ifstream f(traj_name);
@@ -126,21 +77,13 @@ int main(int argc, char **argv) {
 
     // Stored data. //
     vector<int> loopIndex;      // Store loop points.
-    vector<vector<int>> globeIndexList;   // Store loop points' corresponding global IDs in all trajectories.
-    int loop_of_traj[tr_num][loops_each_traj];  // Store loop points in each traj.
-
+    vector<vector<int>> globeIndexList;   // Store loop points' corresponding global ID in each trajectory.
     // Temp data. //
     vector<string> temp, lmGTID, lmIndex;   // temp loop points & global ID container.
     int loop_check[loops_each_traj];	// to find the reference of loop points in loopIndex.
     int tr_n = 0;	// to check current reading trajactory.
-    int lookup = 0; 	// to check if current traj is the 1st among 10.
 
     while(getline(loop_file, message)){
-
-        // Only read 1st traj in 10. //
-        if( (lookup++ % 10) != 0){
-            continue;
-        }
 
         boost::split(temp, message, boost::is_any_of(":"));
         boost::split(lmGTID, temp[2], boost::is_any_of(" "));
@@ -172,8 +115,7 @@ int main(int argc, char **argv) {
             }
             loop_check[i] = int_ID;
         }
-     //   copy(loopIndex.begin(), loopIndex.end(),
-     //        ostream_iterator<int>(cout, "\n"));	//for debugging.
+        //copy(loopIndex.begin(), loopIndex.end(), ostream_iterator<int>(cout, "\n"));	//for debugging.
 
         // Assign global ID to the corresponding loop point. //
         for(int i = 0; i < loops_each_traj; i++){
@@ -185,24 +127,12 @@ int main(int argc, char **argv) {
             globeIndexList[loop_ref].push_back(globeID);
 
             vector<int>::iterator end = globeIndexList[loop_ref].end();
-            cerr << "The " << i + 1 << "th loop point for lmGTID for traj " << tr_n + 1 << " is " << loopIndex[loop_ref] << endl;
+            cerr << "The " << i + 1 << "th loop point for lmGTID for traj " << tr_n + 1 << " is " << loopIndex[loop_ref]  << endl;
             cerr << "The " << i + 1 << "th loop point for lmIndex for traj " << tr_n + 1 << " is " << *(end - 1) << endl;
-        }
-
-        for(int i = 0; i < loops_each_traj; i++){
-            loop_of_traj[tr_n][i] = atoi(lmGTID[i].c_str());
         }
         tr_n++;
     }
     loop_file.close();
-
-    
-    //////////////////////////////////////////////
-    /// Move trajs to fit in the global scene. ///
-    Matrix3d* trans_matrices = new Matrix3d[tr_num];
-
-    for(int i = 0; i < tr_num; i++){
-    }
 
 
      ////////////////////////////////////
@@ -218,8 +148,8 @@ int main(int argc, char **argv) {
 
     /////////////////////////////////
     /// Add odometry constraints. ///
-    cout << "Odometry Optimization... " << endl;
     Matrix2d eye2d; eye2d << 1, 0, 0, 1;
+    cout << "Odometry Optimization... " << endl;
 
     int vertice_total = 0;
     int edge_total = 0;
@@ -251,41 +181,47 @@ int main(int argc, char **argv) {
         else gap_ptr++;
     }
 
-    ////////////////////////////////////
-    /// Virtual Camera Optimization. ///
-        // check input. //
-    int loopList_size = loopIndex.size();
-    for(int i = 0; i < loopList_size; i++){
-        cout << "loop point" << i + 1 << " is " << loopIndex[i] << endl;
-        cout << "Global IDs are ";
-        vector<int>::iterator iter;
-        for(iter = globeIndexList[i].begin(); iter != globeIndexList[i].end(); iter++){
-            cout << *iter << " ";
-        }
-        cout << endl;
-    }
-    for(int i = 0; i < tr_num; i++){
-        cout << "Loops in traj" << i << " are ";
-        for(int j = 0; j < loops_each_traj; j++){
-            cout << loop_of_traj[i][j] << " ";
-        }
-        cout << endl;
-    }
-        // Add edge. //
-    vector<vector<int>>::iterator globe_iter = globeIndexList.begin() - 1;
-    while(globe_iter++ != globeIndexList.end()){
 
-        int list_size = (*globe_iter).size();
-        for(int i = 0; i < list_size - 1; i++){
-            for(int j = i + 1; j < list_size; j++){
+    /////////////////////////////////////////////////////////////
+    /// Partial optimize every 10 traj to eliminate drifting. ///
+    for(int i = 0; i < (int)(tr_num / 10); i++){
+        for(int j = 0; j < 10; j++){
 
-                g2o::EdgePointXY *edge = new g2o::EdgePointXY();
-                edge->vertices()[0] = optimizer.vertex((*globe_iter)[i]);
-                edge->vertices()[1] = optimizer.vertex((*globe_iter)[j]);
-                edge->setMeasurement(Vector2d(0, 0));
-                edge->setInformation(eye2d);
-                optimizer.addEdge(edge);
-                edge_total++;
+            if(j != 9)
+            {     // For every two near trajs' sizes, calculate the smaller.
+             int less_size = min( (*(traj_size + 10 * i + j)), (*(traj_size + 10 * i + j + 1)) );
+             int start_a = (*(pose_sum + i * 10 + j)) - (*(traj_size + i * 10 + j));
+             int start_b = (*(pose_sum + i * 10 + j + 1)) - (*(traj_size + i * 10 + j + 1));
+
+             // Add constraints along the trajs for every 2 near point.
+             for(int k = 0; k < less_size; k++){
+
+                 g2o::EdgePointXY *edge = new g2o::EdgePointXY;
+                 edge->vertices()[0] = optimizer.vertex(start_a + k);
+                 edge->vertices()[1] = optimizer.vertex(start_b + k);
+                 edge->setMeasurement(Vector2d(0, 0));
+                 edge->setInformation(eye2d);
+                 optimizer.addEdge(edge);
+                 edge_total++;
+             }
+            }
+            else
+            {       // The 10th traj take in 1st traj as its near next traj.
+             int less_size = min( (*(traj_size + 10 * i + 9)), (*traj_size + 10 * i) );
+             int start_a = (*(pose_sum + i * 10 + 9)) - (*(traj_size + i * 10 + 9));
+             int start_b = (*(pose_sum + i * 10)) - (*(traj_size + i * 10));
+
+             // Add constraints along the trajs for every 2 near point.
+             for(int k = 0; k < less_size; k++){
+
+                 g2o::EdgePointXY *edge = new g2o::EdgePointXY;
+                 edge->vertices()[0] = optimizer.vertex(start_a + k);
+                 edge->vertices()[1] = optimizer.vertex(start_b + k);
+                 edge->setMeasurement(Vector2d(0, 0));
+                 edge->setInformation(eye2d);
+                 optimizer.addEdge(edge);
+                 edge_total++;
+             }
             }
         }
     }
@@ -306,7 +242,7 @@ int main(int argc, char **argv) {
     cout << "Saving optimization results..." << endl;
     optimizer.save("result.g2o");
 
-    delete traj_size, pose_sum, gap_ptr, loop_of_traj;
+    delete traj_size, pose_sum, gap_ptr;
 
     return 0;
 }

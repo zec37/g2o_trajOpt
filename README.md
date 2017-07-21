@@ -1,6 +1,6 @@
 # trajOptimization
 ===
-This project is for optimizing seperated trajactories data from crowd-sourcing. The data only contains consensus locations' reference in different trajectories.<br>
+This project is for optimizing seperated trajactories data from crowd-sourcing sensor data. The data only contains consensus locations' reference in different trajectories.<br>
 eg. <br>
 >>traj:7	lmGTID:10 1 2 9 7 4	lmIndex:11 44 65 99 124 157<br>
 >>traj:9	lmGTID:10 1 2 9 7 4	lmIndex:11 45 66 99 124 157<br>

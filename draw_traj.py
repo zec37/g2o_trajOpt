@@ -12,7 +12,7 @@ while(1):
     num_recv = raw_input("Which traj? ")
     num = num_recv.split(" ")
     if(int(num[1]) == 1):
-        file_name='./data/traj'+str(int(num[0])+1)+'.txt'
+        file_name='./data_ori/traj'+str(int(num[0])+1)+'.txt'
         f=open(file_name)
         x=[]
         y=[]
@@ -20,7 +20,7 @@ while(1):
             data=line.split()
             x.append(float(data[1]))
             y.append(float(data[2]))
-        plt.plot(x,y)
+        plt.plot(y,x)
         plt.show()
     else:
         n = int(num[1])
@@ -30,7 +30,7 @@ while(1):
         for i in range(n):
             plt.figure(1)
             plt.subplot(size_x, size_y, i + 1)
-            file_name = './data/traj' + str(int(num[0]) + i + 1) + '.txt'
+            file_name = './data_ori/traj' + str(int(num[0]) + i + 1) + '.txt'
             f = open(file_name)
             x = []
             y = []
@@ -38,5 +38,5 @@ while(1):
                 data = line.split()
                 x.append( float(data[1]))
                 y.append( float(data[2]))
-            plt.plot(x,y)
+            plt.plot(y,x)
         plt.show()

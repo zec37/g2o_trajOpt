@@ -1,0 +1,8 @@
+traj:1	lmGTID:10 1 2 9 7 4	lmIndex:11 44 63 96 120 153
+traj:2	lmGTID:7 4 2 9 10 1	lmIndex:13 47 73 108 129 164
+traj:3	lmGTID:2 9 37 64 88 89	lmIndex:10 45 50 61 72 80
+traj:4	lmGTID:2 9 37 64 86 87	lmIndex:11 46 51 63 79 85
+traj:5	lmGTID:2 9 37 64 73 85	lmIndex:10 45 50 61 83 92
+traj:6	lmGTID:42 41 37 64 88 89	lmIndex:12 23 47 58 68 77
+traj:7	lmGTID:41 37 64 73 74 82	lmIndex:7 31 42 62 67 81
+traj:8	lmGTID:10 37 64 71 75 83	lmIndex:9 33 43 61 66 78

@@ -24,7 +24,7 @@ include_directories("/usr/local/include/eigen3/Eigen")
 #find_package(OpenGL)
 #find_package(GLUT)
 
-add_executable( g2o_trajopt traj_match_f2.cpp)
+add_executable( g2o_trajopt traj_match_g2o.cpp)
 target_link_libraries( ${PROJECT_NAME} 
     g2o_core g2o_stuff g2o_types_slam2d
     ${CHOLMOD_LIBRARIES}

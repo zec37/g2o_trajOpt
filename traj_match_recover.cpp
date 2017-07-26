@@ -38,7 +38,7 @@ using namespace Eigen;
 /// Vector3d = {theta, tx, ty} /////
 class VertexSim2: public g2o::BaseVertex<3, Vector3d>
 {
-    public:
+public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
     VertexSim2() : BaseVertex<3, Vector3d> () {}
     virtual bool read ( istream& is )
@@ -64,7 +64,7 @@ class VertexSim2: public g2o::BaseVertex<3, Vector3d>
 
 class EdgeSim2: public g2o::BaseUnaryEdge<2, Vector2d, VertexSim2>
 {
-    public:
+public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
     EdgeSim2 ( const Vector2d origin ) : BaseUnaryEdge<2, Vector2d, VertexSim2> (), _origin ( origin ) {}
     virtual bool read ( istream& is )
@@ -87,7 +87,7 @@ class EdgeSim2: public g2o::BaseUnaryEdge<2, Vector2d, VertexSim2>
         double y = ( sin ( theta ) *m[0] + cos ( theta ) *m[1] ) + ty ;
         _error = _origin - Vector2d ( x,y );
     }
-    private:
+private:
     Vector2d _origin;
 };
 
@@ -108,30 +108,6 @@ vector<int> combine2(int top, int size, vector<int> memory){
     return memory;
 }
 
-/////////////////////////////////////////////////////////////////////////////
-/// This function is used to retrieve average coordinate of a loop point. ///
-Vector2d loopCoord_retrieve(vector<int> IdList, vector<Vector2d> coordList, int loopId){
-
-    for(int i = 0; i < IdList.size(); i++){
-
-        if(IdList[i] == loopId){
-
-            return coordList[i];
-        }
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////
-/// Use to calculate the distance of a point to the calculateed line. ///
-double distance_to_line(Vector2d point1, Vector2d point2, Vector2d target){
-
-    Vector3d vec_p2p, vec_t2p;
-    vec_p2p << (point1 - point2), 0;
-    vec_t2p << (target - point2), 0;
-    vec_p2p.normalize();
-    double dist = vec_p2p.cross(vec_t2p).squaredNorm();
-    return sqrt(dist);
-}
 
 // ------------------------------------------------- //
 // ------------------------------------------------- //
@@ -141,7 +117,7 @@ double distance_to_line(Vector2d point1, Vector2d point2, Vector2d target){
 /// Pre_define param. ///
 const int tr_num = 80;
 const int loops_each_traj = 6;
-const int batch = 10;
+
 
 int main(int argc, char **argv) {
 
@@ -191,8 +167,6 @@ int main(int argc, char **argv) {
     vector<vector<int>> globeIndexList;   // Store loop points' corresponding global IDs in all trajectories.
     int loop_of_traj[tr_num][loops_each_traj];  	// Store loop points in each traj.
     int loopref_of_traj[tr_num][loops_each_traj]; 	// Store loop reference in each traj.
-    int loopglobe_of_traj[tr_num][loops_each_traj]; 	// Store globe ID for each loop point.
-    vector<int> cut;
 
     // Temp data. //
     vector<string> temp, lmGTID, lmIndex;   // temp loop points & global ID container.
@@ -201,8 +175,8 @@ int main(int argc, char **argv) {
     int lookup = 0; 	// to check if current traj is the 1st among 10.
 
     while(getline(loop_file, message)){
-
-        if(tr_n == tr_num) { break; }
+      
+	if(tr_n == tr_num) { break; }
 
         boost::split(temp, message, boost::is_any_of(":"));
         boost::split(lmGTID, temp[2], boost::is_any_of(" "));
@@ -254,13 +228,7 @@ int main(int argc, char **argv) {
         for(int i = 0; i < loops_each_traj; i++){
             loop_of_traj[tr_n][i] = atoi(lmGTID[i].c_str());
             loopref_of_traj[tr_n][i] = atoi(lmIndex[i].c_str());
-            loopglobe_of_traj[tr_n][i] = loopref_of_traj[tr_n][i] + pose_sum[tr_n] - traj_size[tr_n];
         }
-
-        cut.push_back(
-            loopglobe_of_traj[tr_n][0] - 1);
-        cut.push_back(
-            loopglobe_of_traj[tr_n][loops_each_traj - 1] - 1);
         tr_n++;
         }
         loop_file.close();
@@ -268,51 +236,46 @@ int main(int argc, char **argv) {
 
 // ------------------------------------------------------------------- //
 
-
+    
     Matrix2d eye2d; eye2d << 1, 0, 0, 1;
 
     ///////////////////////////////////////////
     /// Optimize the tranform of each traj. ///
 
         // check input //
-        for(int i = 0; i < tr_num; i++){
-            cout << "Loops in traj" << i + 1 << " are ";
-            for(int j = 0; j < loops_each_traj; j++){
-                cout << loop_of_traj[i][j] << " ";
-            }
-            cout << endl;
-            cout << "Local id in traj" << i + 1 << " are ";
-            for(int j = 0; j < loops_each_traj; j++){
-                cout << loopref_of_traj[i][j] << " ";
-            }
-            cout << endl;
-            cout << "Globe id in traj" << i + 1 << " are ";
-            for(int j = 0; j < loops_each_traj; j++){
-                cout << loopglobe_of_traj[i][j] << " ";
-            }
-            cout << endl;
+    for(int i = 0; i < tr_num; i++){
+        cout << "Loops in traj" << i + 1 << " are ";
+        for(int j = 0; j < loops_each_traj; j++){
+            cout << loop_of_traj[i][j] << " ";
         }
-
+        cout << endl;
+        cout << "Local id in traj" << i + 1 << " are ";
+        for(int j = 0; j < loops_each_traj; j++){
+            cout << loopref_of_traj[i][j] << " ";
+        }
+        cout << endl;
+    }
+    
 
     for(int i = 0; i < tr_num; i++){
 
-        g2o::SparseOptimizer pre_optimizer;
-        g2o::BlockSolverX::LinearSolverType *pre_linearSolver; 
-        pre_linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolverX::PoseMatrixType>();
-        g2o::BlockSolverX* pre_solver_ptr = new g2o::BlockSolverX( pre_linearSolver );
-        g2o::OptimizationAlgorithmLevenberg* pre_solver = new g2o::OptimizationAlgorithmLevenberg( pre_solver_ptr );
-        pre_optimizer.setAlgorithm( pre_solver );
+	g2o::SparseOptimizer pre_optimizer;
+	g2o::BlockSolverX::LinearSolverType *pre_linearSolver; 
+	pre_linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolverX::PoseMatrixType>();
+	g2o::BlockSolverX* pre_solver_ptr = new g2o::BlockSolverX( pre_linearSolver );
+	g2o::OptimizationAlgorithmLevenberg* pre_solver = new g2o::OptimizationAlgorithmLevenberg( pre_solver_ptr );
+	pre_optimizer.setAlgorithm( pre_solver );
 
         cout << "Initialize pre-optimization for traj" << i + 1 << endl;
-
+	
         int pre_edge_count = 0;
-
-        if(i == 0) { 
-
-            cout << "Pass this traj..." << endl;
-            continue;
-        } 	// Skip the first traj.
-
+	
+	if(i == 0) { 
+	  
+	  cout << "Pass this traj..." << endl;
+	  continue;
+	} 	// Skip the first traj.
+	
         // Add vertex. i.e. the transform matrix. //
         VertexSim2* v = new VertexSim2();
         v->setId(0);
@@ -327,51 +290,51 @@ int main(int argc, char **argv) {
             // Current loop point to compare in this traj.
 
             if(loopIndex[ref_List] == loop_of_traj[i][ref_This]){
-
+            
                 int ref_This_globe = loopref_of_traj[i][ref_This] + pose_sum[i] - traj_size[i] - 1;
 
-                int read_check = 0;
+		int read_check = 0;
                 for(int k = 0; k < globeIndexList[ref_List].size(); k++){
-
-                    //if(read_check > 0) { break; }
+		  
+		    //if(read_check > 0) { break; }
 
                     int ref_List_globe = globeIndexList[ref_List][k];
-
+		    
                     if(ref_List_globe >= ref_This_globe){
                         break;      // Omit those should not be loaded yet.
                     }
-
+                    
                     EdgeSim2* transform_edge = new EdgeSim2( poses[ref_List_globe] );
-                    transform_edge->setId(pre_edge_count);
+		    transform_edge->setId(pre_edge_count);
                     transform_edge->setVertex(0, v);
                     transform_edge->setMeasurement( poses[ref_This_globe] );
                     transform_edge->setInformation(eye2d);
                     transform_edge->setRobustKernel( new g2o::RobustKernelHuber() );
                     pre_optimizer.addEdge(transform_edge);
-
+		    
                     cout << "Edge" << pre_edge_count << ": ";
-                    cout << "pos1: " << poses[ref_List_globe].transpose() << " ";
-                    cout << "pos2: " << poses[ref_This_globe].transpose() << endl;
+		    cout << "pos1: " << poses[ref_List_globe].transpose() << " ";
+		    cout << "pos2: " << poses[ref_This_globe].transpose() << endl;
                     pre_edge_count++;
-                    read_check++;
+		    read_check++;
                 }
             }
         }
-    cout << pre_edge_count << " edges" << " has been added to this graph." << endl;
+        cout << pre_edge_count << " edges" << " has been added to this graph." << endl;
 
         // Pre optimization for each new traj. //
         pre_optimizer.setVerbose(true);
         pre_optimizer.initializeOptimization();
         cout << "Running pre-optimization..." << endl;
-        if(pre_optimizer.verifyInformationMatrices()){
-            pre_optimizer.optimize(30);
-        }
+	if(pre_optimizer.verifyInformationMatrices()){
+	  pre_optimizer.optimize(30);
+	}
 
         // Do the transformation for current traj and before. //
         cout << "Do the transformation..." << endl;
 
         Vector3d transform = v->estimate();
-        cout << "transform quatenion is " << transform << endl << endl;
+	cout << "transform quatenion is " << transform << endl << endl;
         double theta = transform[0];
         double tx = transform[1];
         double ty = transform[2];
@@ -386,12 +349,8 @@ int main(int argc, char **argv) {
         }
 
         pre_optimizer.clear();
-        }
-
-    ofstream aligned("../result/aligned.txt");
-    for(int i = 0; i < 
-        poses.size(); i++){aligned << i << " " << poses[i].transpose() << endl;
-                          }
+    }
+    
 
     ////////////////////////////////////
     /// Create Optimization Problem. ///
@@ -402,6 +361,7 @@ int main(int argc, char **argv) {
     g2o::OptimizationAlgorithmLevenberg *solver = new g2o::OptimizationAlgorithmLevenberg( solver_ptr );
     optimizer.setAlgorithm( solver );
     cout << "Solver initiated. " << endl;
+
 
     /////////////////////////////////
     /// Add odometry constraints. ///
@@ -421,7 +381,7 @@ int main(int argc, char **argv) {
         optimizer.addVertex(vertice);
         vertice_total++;
     }
-
+    
         /// Add edges. //
 
     for(int i = 0; i < poses.size(); i++){
@@ -440,60 +400,47 @@ int main(int argc, char **argv) {
     //////////////////////////////////
     /// Cross points Optimization. ///
     cout << "Loop points Optimization... " << endl;
-    // check input. //
+        // check input. //
     int loopList_size = loopIndex.size();
-    vector<Vector2d> loopCoordList;
     for(int i = 0; i < loopList_size; i++){
-
-        double x_mean = 0.0, y_mean = 0.0;
-        int count_mean = 0;
         cout << "loop point" << i + 1 << " is " << loopIndex[i] << endl;
         cout << "Global IDs are ";
         vector<int>::iterator iter;
         for(iter = globeIndexList[i].begin(); iter != globeIndexList[i].end(); iter++){
-            cout << *iter + 1 << " ";
-            x_mean += poses[*iter](0);
-            y_mean += poses[*iter](1);
-            count_mean++;
+            cout << *iter << " ";
         }
         cout << endl;
-        cout << "Point coordinate average value is (";
-        cout << Vector2d((x_mean/count_mean), (y_mean/count_mean)).transpose() << ")" << endl;
-        loopCoordList.push_back(Vector2d((x_mean/count_mean), (y_mean/count_mean)));	    
     }
-
         // Add edge. //
-        vector<vector<int>>::iterator globe_iter = globeIndexList.begin() - 1;
-        while(globe_iter++ != globeIndexList.end()){
+    vector<vector<int>>::iterator globe_iter = globeIndexList.begin() - 1;
+    while(globe_iter++ != globeIndexList.end()){
 
-            int list_size = (*globe_iter).size();
-            vector<int> globeList_comb;
-            globeList_comb = combine2(list_size, list_size, globeList_comb);
-            if(globeList_comb.size() != 0){
-                cerr << globeList_comb.size() << " combinations." << endl;
-                for(int i = 0; i < (list_size * (list_size - 1) / 2); i++){
+        int list_size = (*globe_iter).size();
+        vector<int> globeList_comb;
+        globeList_comb = combine2(list_size, list_size, globeList_comb);
+        if(globeList_comb.size() != 0){
+	    cerr << globeList_comb.size() << " combinations." << endl;
+            for(int i = 0; i < (list_size * (list_size - 1) / 2); i++){
 
-                    int j = (*globe_iter)[globeList_comb[2 * i]];
-                    int k = (*globe_iter)[globeList_comb[2 * i + 1]];
-
-                    g2o::EdgePointXY *edge = new g2o::EdgePointXY();
-                    edge->vertices()[0] = optimizer.vertex(j);
-                    edge->vertices()[1] = optimizer.vertex(k);
-                    edge->setMeasurement(Vector2d(0, 0));
-                    edge->setInformation(eye2d);
-                    optimizer.addEdge(edge);
-                    edge_total++;
-                }
+                int j = (*globe_iter)[globeList_comb[2 * i]];
+                int k = (*globe_iter)[globeList_comb[2 * i + 1]];
+		
+                g2o::EdgePointXY *edge = new g2o::EdgePointXY();
+                edge->vertices()[0] = optimizer.vertex(j);
+                edge->vertices()[1] = optimizer.vertex(k);
+                edge->setMeasurement(Vector2d(0, 0));
+                edge->setInformation(eye2d);
+                optimizer.addEdge(edge);
+                edge_total++;
             }
         }
+    }
 
 
     /////////////////////
     /// Optimization. ///
 
-    cout << vertice_total << " vertices and ";
-    cout << edge_total << " edges"; 
-    cout << " has been added to the graph." << endl;
+    cout << vertice_total << " vertices and " << edge_total << " edges" << " has been added to the graph." << endl;
 
     optimizer.save("loaded.g2o");
     cout << "Initialize optimization..." << endl;
@@ -505,61 +452,7 @@ int main(int argc, char **argv) {
     cout << "Saving optimization results..." << endl;
     optimizer.save("result.g2o");
 
-    //////////////////////////////////
-    /// Output the optimized file. ///
-    ofstream optimized("../result/optimized.txt");
-    vector<Vector2d> poses_result;
-    int cursor = 0;
-    int inner_cursor = 0;
-    int output_count = 0;
-    bool read = 0;
-    for(int i = 0; i < poses.size(); i++){
-
-        if(i == cut[cursor * 2]){
-            read = true; 
-        }
-        if(i == cut[cursor * 2 + 1]){
-            read = false;
-            cursor++;
-            inner_cursor = 0;
-        }
-        if(read){
-
-            output_count++;
-            Vector2d sample = ((g2o::VertexPointXY*)optimizer.vertices()[i])->estimate();
-            optimized << i << " " << sample.transpose() << " ";
-
-            if(i < loopglobe_of_traj[cursor][inner_cursor + 1] - 1){
-
-                int start = loop_of_traj[cursor][inner_cursor];
-                int end = loop_of_traj[cursor][inner_cursor + 1];
-                optimized << start << " ";
-                optimized << end << " ";
-
-                Vector2d point1 = loopCoord_retrieve(loopIndex, loopCoordList, start);
-                Vector2d point2 = loopCoord_retrieve(loopIndex, loopCoordList, end);
-                optimized << distance_to_line(point1, point2, sample);
-                optimized << endl;
-            }
-            else{
-
-                int start = loop_of_traj[cursor][inner_cursor + 1];
-                int end = loop_of_traj[cursor][inner_cursor + 2];
-                optimized << start << " ";
-                optimized << end << " ";
-
-                Vector2d point1 = loopCoord_retrieve(loopIndex, loopCoordList, start);
-                Vector2d point2 = loopCoord_retrieve(loopIndex, loopCoordList, end);
-                optimized << distance_to_line(point1, point2, sample);
-                optimized << endl;
-                inner_cursor++;
-            }	    
-        }
-    }
-
     delete traj_size, pose_sum, gap_ptr, loop_of_traj;
 
-    cout << "Output " << output_count << " points." << endl;
-    cout << " Done." << endl;
     return 0;
 }

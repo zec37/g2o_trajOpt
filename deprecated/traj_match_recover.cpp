@@ -26,10 +26,8 @@
 #include "g2o/core/optimization_algorithm_levenberg.h"
 #include "g2o/core/robust_kernel_impl.h"
 
-#include "g2o/solvers/cholmod/linear_solver_cholmod.h"
+//#include "g2o/solvers/cholmod/linear_solver_cholmod.h"
 #include "g2o/solvers/eigen/linear_solver_eigen.h"
-#include "g2o/solvers/dense/linear_solver_dense.h"
-#include "g2o/solvers/pcg/linear_solver_pcg.h"
 
 using namespace std;
 using namespace Eigen;
@@ -118,8 +116,6 @@ vector<int> combine2(int top, int size, vector<int> memory){
 /////////////////////////
 /// Pre_define param. ///
 const int tr_num = 80;
-const int batch = 10;
-const int batch_max = 10;
 const int loops_each_traj = 6;
 
 
@@ -138,7 +134,7 @@ int main(int argc, char **argv) {
 
         stringstream intostr;
         string traj_name, traj_index;
-        intostr << (i / batch) * batch_max + (i % batch) + 1 ;
+        intostr << (i + 1);    // Need to fix for different read.
         intostr >> traj_index;
         traj_name = "../data/traj" + traj_index + ".txt";
         ifstream f(traj_name);
@@ -168,7 +164,7 @@ int main(int argc, char **argv) {
 
     // Stored data. //
     vector<int> loopIndex;      // Store loop points.
-    vector<vector<int> > globeIndexList;   // Store loop points' corresponding global IDs in all trajectories.
+    vector<vector<int>> globeIndexList;   // Store loop points' corresponding global IDs in all trajectories.
     int loop_of_traj[tr_num][loops_each_traj];  	// Store loop points in each traj.
     int loopref_of_traj[tr_num][loops_each_traj]; 	// Store loop reference in each traj.
     int loopglobe_of_traj[tr_num][loops_each_traj]; 	// Store globe ID for each loop point.
@@ -177,17 +173,11 @@ int main(int argc, char **argv) {
     vector<string> temp, lmGTID, lmIndex;   // temp loop points & global ID container.
     int loop_check[loops_each_traj];	// to find the reference of loop points in loopIndex.
     int tr_n = 0;	// to check current reading trajactory.
-    int tr_check = 0;
     int lookup = 0; 	// to check if current traj is the 1st among 10.
 
     while(getline(loop_file, message)){
       
-        if(tr_n == tr_num) { break; }
-
-        if(tr_n % batch == 0 && tr_check % batch_max != 0){
-            tr_check++;
-            continue;
-        }
+	if(tr_n == tr_num) { break; }
 
         boost::split(temp, message, boost::is_any_of(":"));
         boost::split(lmGTID, temp[2], boost::is_any_of(" "));
@@ -242,7 +232,6 @@ int main(int argc, char **argv) {
             loopglobe_of_traj[tr_n][i] = atoi(lmIndex[i].c_str()) + pose_sum[tr_n] - traj_size[tr_n];
         }
         tr_n++;
-        tr_check++;
         }
         loop_file.close();
 
@@ -279,7 +268,7 @@ int main(int argc, char **argv) {
 
 	g2o::SparseOptimizer pre_optimizer;
 	g2o::BlockSolverX::LinearSolverType *pre_linearSolver; 
-	pre_linearSolver = new g2o::LinearSolverPCG<g2o::BlockSolverX::PoseMatrixType>();
+	pre_linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolverX::PoseMatrixType>();
 	g2o::BlockSolverX* pre_solver_ptr = new g2o::BlockSolverX( pre_linearSolver );
 	g2o::OptimizationAlgorithmLevenberg* pre_solver = new g2o::OptimizationAlgorithmLevenberg( pre_solver_ptr );
 	pre_optimizer.setAlgorithm( pre_solver );
@@ -369,16 +358,12 @@ int main(int argc, char **argv) {
         pre_optimizer.clear();
     }
     
-    ofstream aligned("../result/aligned.txt");
-    for(int i = 0; i < poses.size(); i++){
-	aligned << i << " " << poses[i].transpose() << endl;
-    }
 
     ////////////////////////////////////
     /// Create Optimization Problem. ///
     g2o::SparseOptimizer optimizer;
     g2o::BlockSolverX::LinearSolverType *linearSolver;
-    linearSolver = new g2o::LinearSolverDense<g2o::BlockSolverX::PoseMatrixType>();
+    linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolverX::PoseMatrixType>();
     g2o::BlockSolverX *solver_ptr = new g2o::BlockSolverX( linearSolver );
     g2o::OptimizationAlgorithmLevenberg *solver = new g2o::OptimizationAlgorithmLevenberg( solver_ptr );
     optimizer.setAlgorithm( solver );
@@ -434,7 +419,7 @@ int main(int argc, char **argv) {
         cout << endl;
     }
         // Add edge. //
-    vector<vector<int> >::iterator globe_iter = globeIndexList.begin() - 1;
+    vector<vector<int>>::iterator globe_iter = globeIndexList.begin() - 1;
     while(globe_iter++ != globeIndexList.end()){
 
         int list_size = (*globe_iter).size();

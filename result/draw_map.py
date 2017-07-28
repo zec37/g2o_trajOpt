@@ -9,7 +9,6 @@ x_a = []
 y_a = []
 x_o = []
 y_o = []
-error = []
 
 for line in aligned:
     data = line.split()
@@ -19,12 +18,10 @@ for line in optimized:
     data = line.split()
     x_o.append(float(data[1]))
     y_o.append(float(data[2]))
-    error.append(float(data[5]))
 
-plt.subplot(311)
+
+plt.subplot(211)
 plt.scatter(y_a, x_a)
-plt.subplot(312)
+plt.subplot(212)
 plt.scatter(y_o, x_o)
-plt.subplot(313)
-plt.errorbar(y_o, x_o, yerr=error, fmt = 'o')
 plt.show()

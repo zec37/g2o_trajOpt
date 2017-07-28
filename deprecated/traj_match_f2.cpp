@@ -167,6 +167,7 @@ int main(int argc, char **argv) {
     vector<vector<int>> globeIndexList;   // Store loop points' corresponding global IDs in all trajectories.
     int loop_of_traj[tr_num][loops_each_traj];  	// Store loop points in each traj.
     int loopref_of_traj[tr_num][loops_each_traj]; 	// Store loop reference in each traj.
+    int loopglobe_of_traj[tr_num][loops_each_traj]; 	// Store globe ID for each loop point.
 
     // Temp data. //
     vector<string> temp, lmGTID, lmIndex;   // temp loop points & global ID container.
@@ -228,6 +229,7 @@ int main(int argc, char **argv) {
         for(int i = 0; i < loops_each_traj; i++){
             loop_of_traj[tr_n][i] = atoi(lmGTID[i].c_str());
             loopref_of_traj[tr_n][i] = atoi(lmIndex[i].c_str());
+            loopglobe_of_traj[tr_n][i] = atoi(lmIndex[i].c_str()) + pose_sum[tr_n] - traj_size[tr_n];
         }
         tr_n++;
         }
@@ -252,6 +254,11 @@ int main(int argc, char **argv) {
         cout << "Local id in traj" << i + 1 << " are ";
         for(int j = 0; j < loops_each_traj; j++){
             cout << loopref_of_traj[i][j] << " ";
+        }
+        cout << endl;
+        cout << "Globe id in traj" << i + 1 << " are ";
+        for(int j = 0; j < loops_each_traj; j++){
+            cout << loopglobe_of_traj[i][j] << " ";
         }
         cout << endl;
     }
@@ -451,7 +458,37 @@ int main(int argc, char **argv) {
 
     cout << "Saving optimization results..." << endl;
     optimizer.save("result.g2o");
-
+    
+    //////////////////////////////////
+    /// Output the optimized file. ///
+    ofstream optimized("../result/optimized_ori.txt");
+    int m = 0, n = 0;
+    int start = 0, end = 0;
+    for(int i = 0; i < poses.size(); i++){
+	
+	start = loopglobe_of_traj[m][n] - 1;
+	end = loopglobe_of_traj[m][n + 1] - 1;
+	
+	while(end < i){
+	
+	    n++;
+	    if(n == loops_each_traj - 1){
+		n = 0;
+		m++;
+	    }
+	    start = loopglobe_of_traj[m][n];
+	    end = loopglobe_of_traj[m][n + 1];
+	}
+	
+	if(start <= i && end >= i){
+	    Vector2d sample = ((g2o::VertexPointXY*)optimizer.vertices()[i])->estimate();
+	    optimized << i << " " << sample.transpose() << " ";
+	    optimized << loop_of_traj[m][n] << " ";
+	    optimized << loop_of_traj[m][n + 1] << endl;
+	}
+    }
+    optimized.close();
+    
     delete traj_size, pose_sum, gap_ptr, loop_of_traj;
 
     return 0;
